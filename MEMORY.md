@@ -4,6 +4,7 @@ aporte.
 ## Estado actual
 - v1 funcionando: registrar sesiones (fecha, tema, minutos), racha actual, mejor racha y lista de sesiones.
 - Datos en localStorage.
+- Conectado a GitHub (privado): origin → setasfrancox-developer/diario-de-estudios, rama main.
 ## Decisiones (y por qué)
 - Sin backend ni dependencias: cualquiera debe poder abrirlo con doble clic.
 - Fecha editable en el formulario: permite registrar días pasados y ver la racha crecer.
