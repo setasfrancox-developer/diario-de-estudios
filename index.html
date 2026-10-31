@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diario de Estudio</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="container">
+    <h1>Diario de Estudio</h1>
+
+    <section class="streak-card">
+      <span class="fire">🔥</span>
+      <span class="streak-number" id="streak">0</span>
+      <span class="streak-label">días seguidos</span>
+      <div class="best-streak">
+        🏆 Mejor racha: <strong id="best-streak">0</strong> <span id="best-streak-word">días</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Nueva sesión</h2>
+      <form id="session-form">
+        <label>
+          Fecha
+          <input type="date" id="date" required>
+        </label>
+        <label>
+          Tema
+          <input type="text" id="topic" required placeholder="Ej: JavaScript">
+        </label>
+        <label>
+          Minutos
+          <input type="number" id="minutes" min="1" required placeholder="30">
+        </label>
+        <button type="submit">Guardar sesión</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Sesiones</h2>
+      <ul id="sessions" class="session-list"></ul>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
