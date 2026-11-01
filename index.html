@@ -8,17 +8,33 @@
 </head>
 <body>
   <main class="container">
-    <h1>Diario de Estudio</h1>
+    <h1>Diario de estudio</h1>
 
-    <section class="streak-card">
-      <span class="fire">🔥</span>
-      <span class="streak-number" id="streak">0</span>
-      <span class="streak-label" id="streak-word">días seguidos</span>
-      <div class="best-streak">
-        🏆 Mejor racha: <strong id="best-streak">0</strong> <span id="best-streak-word">días</span>
+    <!-- Estadísticas: racha actual, últimos 7 días, mejor racha, minutos semanales y días del mes -->
+    <section class="streak-card" aria-labelledby="streak-label">
+      <div class="streak-hero">
+        <span class="fire" aria-hidden="true">🔥</span>
+        <span class="streak-number" id="streak">0</span>
+        <span class="streak-label" id="streak-label">días seguidos</span>
+      </div>
+      <div class="week-chain" id="week-chain" aria-label="Últimos siete días"></div>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat__value" id="best-streak">0</span>
+          <span class="stat__label">Mejor racha</span>
+        </div>
+        <div class="stat">
+          <span class="stat__value" id="week-minutes">0</span>
+          <span class="stat__label">Minutos esta semana</span>
+        </div>
+        <div class="stat">
+          <span class="stat__value" id="month-days">0</span>
+          <span class="stat__label">Días este mes</span>
+        </div>
       </div>
     </section>
 
+    <!-- Formulario para registrar una sesión de estudio -->
     <section class="card">
       <h2>Nueva sesión</h2>
       <form id="session-form">
@@ -38,6 +54,7 @@
       </form>
     </section>
 
+    <!-- Lista de sesiones, de la más reciente a la más antigua -->
     <section class="card">
       <h2>Sesiones</h2>
       <ul id="sessions" class="session-list"></ul>

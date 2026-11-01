@@ -11,3 +11,5 @@ Prohibido avanzar con tests en rojo.
 5. **Los datos del usuario son sagrados**: localStorage con compatibilidad hacia atrás y
 fechas siempre en hora local. Nunca se pierde una sesión.
 6. **Idioma**: código en español; interfaz y documentación en español.
+
+

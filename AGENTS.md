@@ -40,6 +40,12 @@ tomadas.
   dejarlo en la memoria.
 - No guardes nunca datos sensibles (claves, tokens, datos personales).
 
+## Comandos
+- Tests: `node --test`
+
+## Reglas
+- Lee `docs/constitution.md` y la spec activa (`specs/NNN-*/`) antes de tocar código.
+
 ## Límites
 - ✅ Siempre: modificar los tres archivos existentes, mantener el diseño responsive.
 - ✅ Siempre: actualizar 'MEMORY.MD' al terminar cada tarea
@@ -47,4 +53,7 @@ tomadas.
 - 🚫 Nunca:  añadir dependencias, frameworks o paso de build.
 
 ## Verificación
-- Abrir `index.html` en el navegador y comprobar formulario, racha, lista y persistencia tras recargar.
+- No hay tests automáticos. Después de cada cambio, verifica con el MCP de Chrome
+DevTools: abre `index.html`, prueba la funcionalidad, revisa la consola y comprueba la
+vista móvil.
+-Para empezar de cero: DevTools - Application - Local Storage - borrar clave 'diario-estudio-sesiones'.
