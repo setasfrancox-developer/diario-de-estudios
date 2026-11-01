@@ -92,6 +92,7 @@ function renderStreaks() {
   const current = computeStreak();
   const best = computeBestStreak();
   document.getElementById('streak').textContent = current;
+  document.getElementById('streak-word').textContent = current === 1 ? 'día seguido' : 'días seguidos';
   document.getElementById('best-streak').textContent = best;
   document.getElementById('best-streak-word').textContent = best === 1 ? 'día' : 'días';
 }
@@ -144,6 +145,7 @@ const topicInput = document.getElementById('topic');
 const minutesInput = document.getElementById('minutes');
 
 dateInput.value = todayStr();
+dateInput.max = todayStr();
 
 form.addEventListener('submit', function (e) {
   e.preventDefault();
@@ -151,7 +153,7 @@ form.addEventListener('submit', function (e) {
   const topic = topicInput.value.trim();
   const minutes = Number(minutesInput.value);
 
-  if (!date || !topic || !(minutes > 0)) {
+  if (!date || !topic || !(minutes > 0) || date > todayStr()) {
     return;
   }
 
@@ -167,6 +169,7 @@ form.addEventListener('submit', function (e) {
   topicInput.value = '';
   minutesInput.value = '';
   dateInput.value = todayStr();
+  dateInput.max = todayStr();
 });
 
 render();

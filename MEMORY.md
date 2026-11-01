@@ -9,6 +9,8 @@ aporte.
 - Sin backend ni dependencias: cualquiera debe poder abrirlo con doble clic.
 - Fecha editable en el formulario: permite registrar días pasados y ver la racha crecer.
 - Mejor racha calculada siempre desde las sesiones (no guardada aparte): evita desincronización.
+- No se permiten fechas futuras (max en el input + guarda en el submit): una sesión futura inflaba la mejor racha sin contar en la actual.
+- Etiqueta de racha en singular cuando vale 1 ("día seguido"), igual que la mejor racha.
 ## Aprendizajes y errores a evitar
 - (vacío por ahora)
 ## Próximos pasos
