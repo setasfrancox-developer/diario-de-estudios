@@ -16,6 +16,6 @@ aporte.
 ## Aprendizajes y errores a evitar
 - (vacío por ahora)
 ## Próximos pasos
-- Revisar las decisiones de la sección 9 de `specs/001-heat-map/spec.md` (dudas resueltas por delegación) antes de implementar.
+- `specs/001-heat-map/spec.md` aprobada (decisiones de la sección 9 aceptadas): lista para pasar al plan técnico e implementar.
 - Al implementar el mapa: actualizar `AGENTS.md` (regla de «solo tres archivos»).
 - Spec aparte pendiente: proteger datos ilegibles de `localStorage` para que no se sobrescriban al guardar.

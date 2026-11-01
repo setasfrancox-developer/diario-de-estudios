@@ -1,6 +1,6 @@
 # Especificación 001 — Mapa de calor de estudio
 
-Estado: aprobada; dudas resueltas por delegación del usuario (ver sección 9) · Fecha: 2026-11-01
+Estado: aprobada, incluidas las decisiones de la sección 9, que el usuario revisó y aceptó · Fecha: 2026-11-01
 
 ## 1. Contexto y objetivo
 
