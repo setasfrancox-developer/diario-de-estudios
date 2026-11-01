@@ -11,8 +11,9 @@ aporte.
 - Mejor racha calculada siempre desde las sesiones (no guardada aparte): evita desincronización.
 - No se permiten fechas futuras (max en el input + guarda en el submit): una sesión futura inflaba la mejor racha sin contar en la actual.
 - Constitución aprobada en `docs/constitution.md` (6 principios): guía de lo innegociable del proyecto.
+- Spec 001 (mapa de calor): 12 semanas fijas (lunes a domingo), 5 niveles por tramos fijos de minutos (0, 1-30, 31-60, 61-120, >120), detalle al tocar un día, datos inválidos ignorados sin tocarlos. Fijo y no relativo: más simple de entender y de comprobar.
 - Etiqueta de racha en singular cuando vale 1 ("día seguido"), igual que la mejor racha.
 ## Aprendizajes y errores a evitar
 - (vacío por ahora)
 ## Próximos pasos
-- (vacío por ahora)
+- Aprobar `specs/001-heat-map/spec.md` (mapa de calor, borrador) y resolver sus dudas abiertas antes de implementar.
