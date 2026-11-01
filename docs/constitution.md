@@ -1,8 +1,13 @@
 # Constitución — Diario de Estudio
-
-1. **Stack mínimo:** solo HTML, CSS y JavaScript puros, sin dependencias, frameworks ni build.
-2. **La spec manda:** `AGENTS.md` define el comportamiento; todo cambio de comportamiento lo actualiza en el mismo commit.
-3. **Lógica separada de la interfaz:** las funciones de fechas y rachas no tocan el DOM ni `localStorage`.
-4. **Tests sin dependencias:** cada regla de dominio tiene una comprobación que se ejecuta abriendo un archivo en el navegador, sin `npm`.
-5. **Datos protegidos:** las sesiones solo viven en `localStorage` y nunca se borran ni se sobrescriben sin acción explícita del usuario.
-6. **Idioma:** textos de interfaz y documentación en español, identificadores del código en inglés.
+Principios innegociables. Toda spec, plan y tarea debe cumplirlos.
+1. **Simplicidad primero**: HTML, CSS y JS puros. Sin dependencias ni build. Funciona
+abriendo index.html con doble clic.
+2. **La spec manda**: nada se implementa si no está en la spec activa. Si falta una
+decisión, se para y se pregunta.
+3. **Lógica separada de interfaz**: los cálculos (fechas, rachas, estadísticas) son
+funciones puras, sin DOM ni localStorage, que reciben "hoy" como parámetro.
+4. **Tests como puerta**: la lógica se prueba con `node --test`, sin instalar paquetes.
+Prohibido avanzar con tests en rojo.
+5. **Los datos del usuario son sagrados**: localStorage con compatibilidad hacia atrás y
+fechas siempre en hora local. Nunca se pierde una sesión.
+6. **Idioma**: código en español; interfaz y documentación en español.
