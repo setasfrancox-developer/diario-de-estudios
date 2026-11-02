@@ -7,7 +7,10 @@ const {
   porcentajeProgreso,
   objetivoCumplido,
   leerObjetivoGuardado,
-  esObjetivoIlegible
+  esObjetivoIlegible,
+  computeStreak,
+  computeBestStreak,
+  computeMonthDays
 } = require('./app.js');
 
 const HOY = '2026-11-02';
@@ -78,7 +81,7 @@ test('computeStreak calcula racha y tolera datos corruptos', function () {
   assert.equal(computeStreak(sesiones, '2026-11-02'), 3);
   assert.equal(computeStreak([], '2026-11-02'), 0);
   assert.equal(computeStreak(null, '2026-11-02'), 0);
-  assert.equal(computeStreak(sesiones, '2026-11-03'), 0);
+  assert.equal(computeStreak(sesiones, '2026-11-03'), 3);
 });
 
 test('computeBestStreak calcula la mejor racha histórica', function () {

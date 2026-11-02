@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'studySessions';
 const STORAGE_GOAL_KEY = 'studyWeeklyGoal';
 
-const Heatmap = (typeof require === 'function')
+const HM = (typeof require === 'function')
   ? require('./heatmap.js')
   : (typeof globalThis !== 'undefined' ? globalThis.Heatmap : {});
 
@@ -58,19 +58,19 @@ function todayStr() {
 }
 
 function esFechaValida(texto) {
-  return Heatmap.esFechaValida(texto);
+  return HM.esFechaValida(texto);
 }
 
 function esMinutoValido(valor) {
-  return Heatmap.esMinutoValido(valor);
+  return HM.esMinutoValido(valor);
 }
 
 function fechaDesdeTexto(texto) {
-  return Heatmap.fechaDesdeTexto(texto);
+  return HM.fechaDesdeTexto(texto);
 }
 
 function textoDesdeFecha(fecha) {
-  return Heatmap.textoDesdeFecha(fecha);
+  return HM.textoDesdeFecha(fecha);
 }
 
 function diasValidos(sesiones) {
@@ -79,7 +79,7 @@ function diasValidos(sesiones) {
   for (let i = 0; i < sesiones.length; i++) {
     const sesion = sesiones[i];
     if (!sesion || typeof sesion !== 'object') continue;
-    if (Heatmap.esFechaValida(sesion.date)) {
+    if (HM.esFechaValida(sesion.date)) {
       conjunto.add(sesion.date);
     }
   }
@@ -89,15 +89,15 @@ function diasValidos(sesiones) {
 function computeStreak(sesiones, hoy) {
   const days = diasValidos(sesiones);
   const today = (hoy === undefined) ? todayStr() : hoy;
-  if (!Heatmap.esFechaValida(today)) return 0;
+  if (!HM.esFechaValida(today)) return 0;
 
   let cursor = null;
   if (days.has(today)) {
     cursor = today;
   } else {
-    const yd = Heatmap.fechaDesdeTexto(today);
+    const yd = HM.fechaDesdeTexto(today);
     yd.setDate(yd.getDate() - 1);
-    const ys = Heatmap.textoDesdeFecha(yd);
+    const ys = HM.textoDesdeFecha(yd);
     if (days.has(ys)) {
       cursor = ys;
     } else {
@@ -109,9 +109,9 @@ function computeStreak(sesiones, hoy) {
   let cur = cursor;
   while (days.has(cur)) {
     count++;
-    const d = Heatmap.fechaDesdeTexto(cur);
+    const d = HM.fechaDesdeTexto(cur);
     d.setDate(d.getDate() - 1);
-    cur = Heatmap.textoDesdeFecha(d);
+    cur = HM.textoDesdeFecha(d);
   }
   return count;
 }
@@ -123,9 +123,9 @@ function computeBestStreak(sesiones, hoy) {
   let best = 1;
   let current = 1;
   for (let i = 1; i < days.length; i++) {
-    const prev = Heatmap.fechaDesdeTexto(days[i - 1]);
+    const prev = HM.fechaDesdeTexto(days[i - 1]);
     prev.setDate(prev.getDate() + 1);
-    if (Heatmap.textoDesdeFecha(prev) === days[i]) {
+    if (HM.textoDesdeFecha(prev) === days[i]) {
       current++;
       if (current > best) best = current;
     } else {
@@ -136,9 +136,9 @@ function computeBestStreak(sesiones, hoy) {
 }
 
 function minutosDeLaSemana(sesiones, hoy) {
-  if (!Heatmap.esFechaValida(hoy)) return 0;
-  const lunes = Heatmap.obtenerLunes(hoy);
-  const domingo = Heatmap.sumarDias(lunes, 6);
+  if (!HM.esFechaValida(hoy)) return 0;
+  const lunes = HM.obtenerLunes(hoy);
+  const domingo = HM.sumarDias(lunes, 6);
   let total = 0;
 
   if (!Array.isArray(sesiones)) return total;
@@ -146,8 +146,8 @@ function minutosDeLaSemana(sesiones, hoy) {
   for (let i = 0; i < sesiones.length; i++) {
     const sesion = sesiones[i];
     if (!sesion || typeof sesion !== 'object') continue;
-    if (!Heatmap.esFechaValida(sesion.date)) continue;
-    if (!Heatmap.esMinutoValido(sesion.minutes)) continue;
+    if (!HM.esFechaValida(sesion.date)) continue;
+    if (!HM.esMinutoValido(sesion.minutes)) continue;
     if (sesion.date > hoy) continue;
     if (sesion.date < lunes || sesion.date > domingo) continue;
     total += sesion.minutes;
@@ -156,8 +156,18 @@ function minutosDeLaSemana(sesiones, hoy) {
   return total;
 }
 
+function porcentajeProgreso(hechos, objetivo) {
+  if (!HM.esMinutoValido(objetivo)) return 0;
+  const porcentaje = (hechos / objetivo) * 100;
+  return Math.min(100, Math.round(porcentaje));
+}
+
+function objetivoCumplido(hechos, objetivo) {
+  return HM.esMinutoValido(objetivo) && hechos >= objetivo;
+}
+
 function computeMonthDays(sesiones, hoy) {
-  if (!Heatmap.esFechaValida(hoy)) return 0;
+  if (!HM.esFechaValida(hoy)) return 0;
   const month = hoy.slice(0, 7);
   let total = 0;
 
@@ -420,7 +430,6 @@ if (typeof document !== 'undefined') {
       return;
     }
 
-    // Releer antes de guardar para no perder sesiones de otra pestaña.
     sessions = (typeof localStorage !== 'undefined') ? loadSessions() : sessions;
     sessions.push({
       id: Date.now(),
