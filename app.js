@@ -1,10 +1,6 @@
 const STORAGE_KEY = 'studySessions';
 const STORAGE_GOAL_KEY = 'studyWeeklyGoal';
 
-const HM = (typeof require === 'function')
-  ? require('./heatmap.js')
-  : (typeof globalThis !== 'undefined' ? globalThis.Heatmap : {});
-
 let sesionesIlegibles = false;
 let textoIlegible = null;
 
@@ -57,21 +53,177 @@ function todayStr() {
   return y + '-' + m + '-' + day;
 }
 
+// --- Lógica pura del mapa de calor (antes en heatmap.js) ---
+
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
 function esFechaValida(texto) {
-  return HM.esFechaValida(texto);
+  if (typeof texto !== 'string') return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
+  const partes = texto.split('-').map(Number);
+  const fecha = new Date(partes[0], partes[1] - 1, partes[2]);
+  return fecha.getFullYear() === partes[0] &&
+         fecha.getMonth() === partes[1] - 1 &&
+         fecha.getDate() === partes[2];
 }
 
 function esMinutoValido(valor) {
-  return HM.esMinutoValido(valor);
+  return Number.isInteger(valor) && Number.isFinite(valor) && valor > 0;
 }
 
 function fechaDesdeTexto(texto) {
-  return HM.fechaDesdeTexto(texto);
+  const partes = texto.split('-').map(Number);
+  return new Date(partes[0], partes[1] - 1, partes[2]);
 }
 
 function textoDesdeFecha(fecha) {
-  return HM.textoDesdeFecha(fecha);
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, '0');
+  const d = String(fecha.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
 }
+
+function sumarDias(texto, n) {
+  const fecha = fechaDesdeTexto(texto);
+  fecha.setDate(fecha.getDate() + n);
+  return textoDesdeFecha(fecha);
+}
+
+function obtenerLunes(texto) {
+  const fecha = fechaDesdeTexto(texto);
+  const desplazamiento = (fecha.getDay() + 6) % 7;
+  fecha.setDate(fecha.getDate() - desplazamiento);
+  return textoDesdeFecha(fecha);
+}
+
+function generarPeriodo(hoy) {
+  if (!esFechaValida(hoy)) {
+    throw new Error('hoy inválido');
+  }
+  const lunesActual = obtenerLunes(hoy);
+  const inicio = sumarDias(lunesActual, -77);
+  const fin = sumarDias(lunesActual, 6);
+  const dias = [];
+  let cursor = inicio;
+
+  while (cursor <= fin) {
+    dias.push({
+      fecha: cursor,
+      esHoy: cursor === hoy,
+      disponible: cursor <= hoy,
+      minutos: 0,
+      nivel: cursor <= hoy ? 0 : null
+    });
+    cursor = sumarDias(cursor, 1);
+  }
+
+  if (dias.length !== 84) {
+    throw new Error('periodo inválido');
+  }
+
+  return { inicio: inicio, fin: fin, dias: dias };
+}
+
+function calcularNivel(minutos) {
+  if (minutos <= 0) return 0;
+  if (minutos <= 30) return 1;
+  if (minutos <= 60) return 2;
+  if (minutos <= 120) return 3;
+  return 4;
+}
+
+function sumarMinutosPorDia(sesiones, hoy) {
+  const periodo = generarPeriodo(hoy);
+  const mapa = new Map();
+
+  if (!Array.isArray(sesiones)) {
+    return mapa;
+  }
+
+  for (let i = 0; i < sesiones.length; i++) {
+    const sesion = sesiones[i];
+    if (!sesion || typeof sesion !== 'object') continue;
+    if (!esFechaValida(sesion.date)) continue;
+    if (!esMinutoValido(sesion.minutes)) continue;
+    if (sesion.date > hoy) continue;
+    if (sesion.date < periodo.inicio || sesion.date > periodo.fin) continue;
+
+    const actual = mapa.get(sesion.date) || 0;
+    mapa.set(sesion.date, actual + sesion.minutes);
+  }
+
+  return mapa;
+}
+
+function construirMapa(sesiones, hoy) {
+  const periodo = generarPeriodo(hoy);
+  const minutosPorDia = sumarMinutosPorDia(sesiones, hoy);
+
+  const dias = periodo.dias.map(function (dia) {
+    const minutos = minutosPorDia.get(dia.fecha) || 0;
+    return {
+      fecha: dia.fecha,
+      esHoy: dia.esHoy,
+      disponible: dia.disponible,
+      minutos: minutos,
+      nivel: dia.disponible ? calcularNivel(minutos) : null
+    };
+  });
+
+  const semanas = [];
+  for (let i = 0; i < dias.length; i += 7) {
+    semanas.push(dias.slice(i, i + 7));
+  }
+
+  return {
+    inicio: periodo.inicio,
+    fin: periodo.fin,
+    dias: dias,
+    semanas: semanas
+  };
+}
+
+function formatearDetalle(fecha, minutos) {
+  const partes = fecha.split('-');
+  const dia = Number(partes[2]);
+  const mes = MESES[Number(partes[1]) - 1];
+  const anio = partes[0];
+  return dia + ' de ' + mes + ' de ' + anio + ' · ' + minutos + ' min';
+}
+
+function resolverSeleccion(fechaSeleccionada, mapa, hoy) {
+  if (fechaSeleccionada && mapa && Array.isArray(mapa.dias)) {
+    for (let i = 0; i < mapa.dias.length; i++) {
+      const dia = mapa.dias[i];
+      if (dia.fecha === fechaSeleccionada && dia.disponible) {
+        return fechaSeleccionada;
+      }
+    }
+  }
+  return hoy;
+}
+
+const Heatmap = {
+  esFechaValida: esFechaValida,
+  esMinutoValido: esMinutoValido,
+  fechaDesdeTexto: fechaDesdeTexto,
+  textoDesdeFecha: textoDesdeFecha,
+  sumarDias: sumarDias,
+  obtenerLunes: obtenerLunes,
+  generarPeriodo: generarPeriodo,
+  calcularNivel: calcularNivel,
+  sumarMinutosPorDia: sumarMinutosPorDia,
+  construirMapa: construirMapa,
+  formatearDetalle: formatearDetalle,
+  resolverSeleccion: resolverSeleccion
+};
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.Heatmap = Heatmap;
+}
+
+// --- Lógica de la app ---
 
 function diasValidos(sesiones) {
   const conjunto = new Set();
@@ -79,7 +231,7 @@ function diasValidos(sesiones) {
   for (let i = 0; i < sesiones.length; i++) {
     const sesion = sesiones[i];
     if (!sesion || typeof sesion !== 'object') continue;
-    if (HM.esFechaValida(sesion.date)) {
+    if (Heatmap.esFechaValida(sesion.date)) {
       conjunto.add(sesion.date);
     }
   }
@@ -89,15 +241,15 @@ function diasValidos(sesiones) {
 function computeStreak(sesiones, hoy) {
   const days = diasValidos(sesiones);
   const today = (hoy === undefined) ? todayStr() : hoy;
-  if (!HM.esFechaValida(today)) return 0;
+  if (!Heatmap.esFechaValida(today)) return 0;
 
   let cursor = null;
   if (days.has(today)) {
     cursor = today;
   } else {
-    const yd = HM.fechaDesdeTexto(today);
+    const yd = Heatmap.fechaDesdeTexto(today);
     yd.setDate(yd.getDate() - 1);
-    const ys = HM.textoDesdeFecha(yd);
+    const ys = Heatmap.textoDesdeFecha(yd);
     if (days.has(ys)) {
       cursor = ys;
     } else {
@@ -109,9 +261,9 @@ function computeStreak(sesiones, hoy) {
   let cur = cursor;
   while (days.has(cur)) {
     count++;
-    const d = HM.fechaDesdeTexto(cur);
+    const d = Heatmap.fechaDesdeTexto(cur);
     d.setDate(d.getDate() - 1);
-    cur = HM.textoDesdeFecha(d);
+    cur = Heatmap.textoDesdeFecha(d);
   }
   return count;
 }
@@ -123,9 +275,9 @@ function computeBestStreak(sesiones, hoy) {
   let best = 1;
   let current = 1;
   for (let i = 1; i < days.length; i++) {
-    const prev = HM.fechaDesdeTexto(days[i - 1]);
+    const prev = Heatmap.fechaDesdeTexto(days[i - 1]);
     prev.setDate(prev.getDate() + 1);
-    if (HM.textoDesdeFecha(prev) === days[i]) {
+    if (Heatmap.textoDesdeFecha(prev) === days[i]) {
       current++;
       if (current > best) best = current;
     } else {
@@ -136,9 +288,9 @@ function computeBestStreak(sesiones, hoy) {
 }
 
 function minutosDeLaSemana(sesiones, hoy) {
-  if (!HM.esFechaValida(hoy)) return 0;
-  const lunes = HM.obtenerLunes(hoy);
-  const domingo = HM.sumarDias(lunes, 6);
+  if (!Heatmap.esFechaValida(hoy)) return 0;
+  const lunes = Heatmap.obtenerLunes(hoy);
+  const domingo = Heatmap.sumarDias(lunes, 6);
   let total = 0;
 
   if (!Array.isArray(sesiones)) return total;
@@ -146,8 +298,8 @@ function minutosDeLaSemana(sesiones, hoy) {
   for (let i = 0; i < sesiones.length; i++) {
     const sesion = sesiones[i];
     if (!sesion || typeof sesion !== 'object') continue;
-    if (!HM.esFechaValida(sesion.date)) continue;
-    if (!HM.esMinutoValido(sesion.minutes)) continue;
+    if (!Heatmap.esFechaValida(sesion.date)) continue;
+    if (!Heatmap.esMinutoValido(sesion.minutes)) continue;
     if (sesion.date > hoy) continue;
     if (sesion.date < lunes || sesion.date > domingo) continue;
     total += sesion.minutes;
@@ -157,17 +309,17 @@ function minutosDeLaSemana(sesiones, hoy) {
 }
 
 function porcentajeProgreso(hechos, objetivo) {
-  if (!HM.esMinutoValido(objetivo)) return 0;
+  if (!Heatmap.esMinutoValido(objetivo)) return 0;
   const porcentaje = (hechos / objetivo) * 100;
   return Math.min(100, Math.round(porcentaje));
 }
 
 function objetivoCumplido(hechos, objetivo) {
-  return HM.esMinutoValido(objetivo) && hechos >= objetivo;
+  return Heatmap.esMinutoValido(objetivo) && hechos >= objetivo;
 }
 
 function computeMonthDays(sesiones, hoy) {
-  if (!HM.esFechaValida(hoy)) return 0;
+  if (!Heatmap.esFechaValida(hoy)) return 0;
   const month = hoy.slice(0, 7);
   let total = 0;
 
@@ -544,6 +696,18 @@ if (typeof module !== 'undefined' && module.exports) {
     esObjetivoIlegible: esObjetivoIlegible,
     computeStreak: computeStreak,
     computeBestStreak: computeBestStreak,
-    computeMonthDays: computeMonthDays
+    computeMonthDays: computeMonthDays,
+    esFechaValida: esFechaValida,
+    esMinutoValido: esMinutoValido,
+    fechaDesdeTexto: fechaDesdeTexto,
+    textoDesdeFecha: textoDesdeFecha,
+    sumarDias: sumarDias,
+    obtenerLunes: obtenerLunes,
+    generarPeriodo: generarPeriodo,
+    calcularNivel: calcularNivel,
+    sumarMinutosPorDia: sumarMinutosPorDia,
+    construirMapa: construirMapa,
+    formatearDetalle: formatearDetalle,
+    resolverSeleccion: resolverSeleccion
   };
 }

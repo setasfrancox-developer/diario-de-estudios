@@ -35,4 +35,5 @@ aporte.
 - `AGENTS.md` actualizado: archivos autorizados por spec, `node --test`, clave `studySessions` y sin la regla absoluta de tres archivos.
 - Siguiente paso: revisión manual en el navegador y ajustes si hace falta.
 - `specs/002-objetivo-semanal` implementada y corregida tras revisión: objetivo semanal con validación, progreso, barra y respaldo. Tests: 17/17 en verde.
+- `heatmap.js` eliminado: su lógica se ha integrado en `app.js` y los tests se unificaron en `app.test.js`.
 - Refactor: racha, mejor racha, minutos semanales y días del mes pasan a funciones puras (sesiones, hoy) y se reutiliza la lógica de fechas de `heatmap.js`. Añadidos `README.md` y `.gitignore`.
