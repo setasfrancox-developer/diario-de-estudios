@@ -1,6 +1,7 @@
 # Especificación 001 — Mapa de calor de estudio
 
 Estado: aprobada, incluidas las decisiones de las secciones 9 y 10 · Fecha: 2026-11-01 · Revisión QA: 2026-11-02
+Nota: la decisión de crear `heatmap.js` cambió en la implementación; su lógica se integró en `app.js`.
 
 ## 1. Contexto y objetivo
 

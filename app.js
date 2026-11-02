@@ -110,7 +110,6 @@ function generarPeriodo(hoy) {
   while (cursor <= fin) {
     dias.push({
       fecha: cursor,
-      esHoy: cursor === hoy,
       disponible: cursor <= hoy,
       minutos: 0,
       nivel: cursor <= hoy ? 0 : null
@@ -164,7 +163,6 @@ function construirMapa(sesiones, hoy) {
     const minutos = minutosPorDia.get(dia.fecha) || 0;
     return {
       fecha: dia.fecha,
-      esHoy: dia.esHoy,
       disponible: dia.disponible,
       minutos: minutos,
       nivel: dia.disponible ? calcularNivel(minutos) : null
@@ -204,25 +202,6 @@ function resolverSeleccion(fechaSeleccionada, mapa, hoy) {
   return hoy;
 }
 
-const Heatmap = {
-  esFechaValida: esFechaValida,
-  esMinutoValido: esMinutoValido,
-  fechaDesdeTexto: fechaDesdeTexto,
-  textoDesdeFecha: textoDesdeFecha,
-  sumarDias: sumarDias,
-  obtenerLunes: obtenerLunes,
-  generarPeriodo: generarPeriodo,
-  calcularNivel: calcularNivel,
-  sumarMinutosPorDia: sumarMinutosPorDia,
-  construirMapa: construirMapa,
-  formatearDetalle: formatearDetalle,
-  resolverSeleccion: resolverSeleccion
-};
-
-if (typeof globalThis !== 'undefined') {
-  globalThis.Heatmap = Heatmap;
-}
-
 // --- Lógica de la app ---
 
 function diasValidos(sesiones) {
@@ -231,7 +210,7 @@ function diasValidos(sesiones) {
   for (let i = 0; i < sesiones.length; i++) {
     const sesion = sesiones[i];
     if (!sesion || typeof sesion !== 'object') continue;
-    if (Heatmap.esFechaValida(sesion.date)) {
+    if (esFechaValida(sesion.date)) {
       conjunto.add(sesion.date);
     }
   }
@@ -241,15 +220,15 @@ function diasValidos(sesiones) {
 function computeStreak(sesiones, hoy) {
   const days = diasValidos(sesiones);
   const today = (hoy === undefined) ? todayStr() : hoy;
-  if (!Heatmap.esFechaValida(today)) return 0;
+  if (!esFechaValida(today)) return 0;
 
   let cursor = null;
   if (days.has(today)) {
     cursor = today;
   } else {
-    const yd = Heatmap.fechaDesdeTexto(today);
+    const yd = fechaDesdeTexto(today);
     yd.setDate(yd.getDate() - 1);
-    const ys = Heatmap.textoDesdeFecha(yd);
+    const ys = textoDesdeFecha(yd);
     if (days.has(ys)) {
       cursor = ys;
     } else {
@@ -261,23 +240,23 @@ function computeStreak(sesiones, hoy) {
   let cur = cursor;
   while (days.has(cur)) {
     count++;
-    const d = Heatmap.fechaDesdeTexto(cur);
+    const d = fechaDesdeTexto(cur);
     d.setDate(d.getDate() - 1);
-    cur = Heatmap.textoDesdeFecha(d);
+    cur = textoDesdeFecha(d);
   }
   return count;
 }
 
-function computeBestStreak(sesiones, hoy) {
+function computeBestStreak(sesiones) {
   const days = Array.from(diasValidos(sesiones)).sort();
   if (days.length === 0) return 0;
 
   let best = 1;
   let current = 1;
   for (let i = 1; i < days.length; i++) {
-    const prev = Heatmap.fechaDesdeTexto(days[i - 1]);
+    const prev = fechaDesdeTexto(days[i - 1]);
     prev.setDate(prev.getDate() + 1);
-    if (Heatmap.textoDesdeFecha(prev) === days[i]) {
+    if (textoDesdeFecha(prev) === days[i]) {
       current++;
       if (current > best) best = current;
     } else {
@@ -288,9 +267,9 @@ function computeBestStreak(sesiones, hoy) {
 }
 
 function minutosDeLaSemana(sesiones, hoy) {
-  if (!Heatmap.esFechaValida(hoy)) return 0;
-  const lunes = Heatmap.obtenerLunes(hoy);
-  const domingo = Heatmap.sumarDias(lunes, 6);
+  if (!esFechaValida(hoy)) return 0;
+  const lunes = obtenerLunes(hoy);
+  const domingo = sumarDias(lunes, 6);
   let total = 0;
 
   if (!Array.isArray(sesiones)) return total;
@@ -298,8 +277,8 @@ function minutosDeLaSemana(sesiones, hoy) {
   for (let i = 0; i < sesiones.length; i++) {
     const sesion = sesiones[i];
     if (!sesion || typeof sesion !== 'object') continue;
-    if (!Heatmap.esFechaValida(sesion.date)) continue;
-    if (!Heatmap.esMinutoValido(sesion.minutes)) continue;
+    if (!esFechaValida(sesion.date)) continue;
+    if (!esMinutoValido(sesion.minutes)) continue;
     if (sesion.date > hoy) continue;
     if (sesion.date < lunes || sesion.date > domingo) continue;
     total += sesion.minutes;
@@ -309,17 +288,17 @@ function minutosDeLaSemana(sesiones, hoy) {
 }
 
 function porcentajeProgreso(hechos, objetivo) {
-  if (!Heatmap.esMinutoValido(objetivo)) return 0;
+  if (!esMinutoValido(objetivo)) return 0;
   const porcentaje = (hechos / objetivo) * 100;
   return Math.min(100, Math.round(porcentaje));
 }
 
 function objetivoCumplido(hechos, objetivo) {
-  return Heatmap.esMinutoValido(objetivo) && hechos >= objetivo;
+  return esMinutoValido(objetivo) && hechos >= objetivo;
 }
 
 function computeMonthDays(sesiones, hoy) {
-  if (!Heatmap.esFechaValida(hoy)) return 0;
+  if (!esFechaValida(hoy)) return 0;
   const month = hoy.slice(0, 7);
   let total = 0;
 
@@ -363,8 +342,8 @@ function renderMapa() {
   if (!grid || !detail || !legend) return;
 
   const hoy = todayStr();
-  mapaActual = Heatmap.construirMapa(sessions, hoy);
-  seleccionMapa = Heatmap.resolverSeleccion(seleccionMapa, mapaActual, hoy);
+  mapaActual = construirMapa(sessions, hoy);
+  seleccionMapa = resolverSeleccion(seleccionMapa, mapaActual, hoy);
 
   grid.innerHTML = '';
   for (let fila = 0; fila < 7; fila++) {
@@ -402,7 +381,7 @@ function renderMapa() {
 
   const diaSeleccionado = mapaActual.dias.find(function (d) { return d.fecha === seleccionMapa; });
   const minutosSeleccionados = diaSeleccionado ? diaSeleccionado.minutos : 0;
-  detail.textContent = Heatmap.formatearDetalle(seleccionMapa, minutosSeleccionados);
+  detail.textContent = formatearDetalle(seleccionMapa, minutosSeleccionados);
 
   legend.innerHTML = '';
   const etiquetas = ['0 min', '1-30 min', '31-60 min', '61-120 min', 'más de 120 min'];
@@ -442,7 +421,7 @@ function seleccionarDiaHeatmap(fecha) {
   seleccionMapa = fecha;
   const detail = document.getElementById('heatmap-detail');
   if (detail) {
-    detail.textContent = Heatmap.formatearDetalle(fecha, dia.minutos);
+    detail.textContent = formatearDetalle(fecha, dia.minutos);
   }
 }
 
@@ -510,7 +489,7 @@ function guardarObjetivo(texto) {
 
 function renderStreaks() {
   const current = computeStreak(sessions, todayStr());
-  const best = computeBestStreak(sessions, todayStr());
+  const best = computeBestStreak(sessions);
   document.getElementById('streak').textContent = current;
   document.getElementById('streak-label').textContent = current === 1 ? 'día seguido' : 'días seguidos';
   document.getElementById('best-streak').textContent = best;
@@ -531,7 +510,8 @@ function renderSessions() {
     return;
   }
 
-  const sorted = sessions.slice().sort(function (a, b) {
+  const validas = sessions.filter(function (s) { return s && typeof s === 'object'; });
+  const sorted = validas.slice().sort(function (a, b) {
     if (a.date < b.date) return 1;
     if (a.date > b.date) return -1;
     return b.id - a.id;
@@ -616,7 +596,7 @@ if (typeof document !== 'undefined') {
       if (!dia) return;
       const detail = document.getElementById('heatmap-detail');
       if (detail) {
-        detail.textContent = Heatmap.formatearDetalle(celda.dataset.fecha, dia.minutos);
+        detail.textContent = formatearDetalle(celda.dataset.fecha, dia.minutos);
       }
     });
 
@@ -625,7 +605,7 @@ if (typeof document !== 'undefined') {
       const detail = document.getElementById('heatmap-detail');
       const dia = mapaActual.dias.find(function (d) { return d.fecha === seleccionMapa; });
       if (detail && dia) {
-        detail.textContent = Heatmap.formatearDetalle(seleccionMapa, dia.minutos);
+        detail.textContent = formatearDetalle(seleccionMapa, dia.minutos);
       }
     });
 

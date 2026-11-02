@@ -1,6 +1,7 @@
 # Plan técnico — Spec 001: Mapa de calor de estudio
 
 Fuentes: `docs/constitution.md` y `specs/001-heat-map/spec.md` (incluidas las decisiones de la sección 10).
+Nota: la lógica prevista para `heatmap.js` se integró finalmente en `app.js`.
 Este plan no implementa código; describe cómo se implementará respetando la constitución y cubriendo todos los RF.
 
 ## 1. Resumen de arquitectura

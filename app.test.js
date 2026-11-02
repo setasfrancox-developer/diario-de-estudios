@@ -102,7 +102,7 @@ test('computeBestStreak calcula la mejor racha histórica', function () {
     { date: '2026-11-05', minutes: 10 },
     { date: '2026-11-06', minutes: 10 }
   ];
-  assert.equal(computeBestStreak(sesiones, '2026-11-02'), 4);
+  assert.equal(computeBestStreak(sesiones), 4);
   assert.equal(computeBestStreak([], '2026-11-02'), 0);
 });
 
@@ -171,7 +171,6 @@ test('generarPeriodo genera 84 días de lunes a domingo', function () {
   assert.equal(periodo.dias[0].fecha, '2026-08-17');
   assert.equal(periodo.dias[83].fecha, '2026-11-08');
   const hoy = periodo.dias.find(function (d) { return d.fecha === HOY; });
-  assert.equal(hoy.esHoy, true);
   assert.equal(hoy.disponible, true);
 });
 

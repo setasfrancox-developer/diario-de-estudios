@@ -325,6 +325,8 @@ input:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+[hidden] { display: none !important; }
 /* Objetivo semanal */
 .goal-block {
   margin-top: 20px;

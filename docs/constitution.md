@@ -12,4 +12,6 @@ Prohibido avanzar con tests en rojo.
 fechas siempre en hora local. Nunca se pierde una sesión.
 6. **Idioma**: código en español; interfaz y documentación en español.
 
+Nota: la lógica pura puede vivir en el mismo archivo que la interfaz si la spec lo autoriza, siempre que sea testeable con `node --test` y no acceda a DOM ni localStorage.
+
 

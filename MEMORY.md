@@ -5,8 +5,8 @@ aporte.
 ## Estado actual
 - v1 funcionando: registrar sesiones (fecha, tema, minutos), racha actual, mejor racha, minutos de la semana, días del mes y lista de sesiones.
 - Datos en localStorage.
-- Conectado a GitHub (privado): origin → setasfrancox-developer/diario-de-estudios, rama main.
-- Diseño renovado: fondo papel azul claro, tinta marino, acento highlighter; cadena de 7 días en el hero.
+- Conectado a GitHub (público): origin → setasfrancox-developer/diario-de-estudios, rama main.
+- Diseño renovado: fondo papel azul claro, tinta marino, acento highlighter.
 
 ## Decisiones (y por qué)
 - Sin backend ni dependencias: cualquiera debe poder abrirlo con doble clic.
@@ -30,10 +30,7 @@ aporte.
 - `specs/001-heat-map/tasks.md` creado: 21 tareas pequeñas con dependencias y criterios verificables.
 - `AGENTS.md` actualizado: archivos autorizados por spec, `node --test`, clave `studySessions` y sin la regla absoluta de tres archivos.
 - La protección de datos ilegibles queda incluida en la spec 001 (copia de respaldo antes de escribir).
-- Implementación de la spec 001 completada: `heatmap.js`, `heatmap.test.js`, HTML, CSS y app.js.
-- Tests: `node --test heatmap.test.js` en verde (13 tests).
-- `AGENTS.md` actualizado: archivos autorizados por spec, `node --test`, clave `studySessions` y sin la regla absoluta de tres archivos.
-- Siguiente paso: revisión manual en el navegador y ajustes si hace falta.
-- `specs/002-objetivo-semanal` implementada y corregida tras revisión: objetivo semanal con validación, progreso, barra y respaldo. Tests: 17/17 en verde.
+- Implementación de las specs 001 y 002 completada. Tests: `node --test` en verde (20 tests).
 - `heatmap.js` eliminado: su lógica se ha integrado en `app.js` y los tests se unificaron en `app.test.js`.
-- Refactor: racha, mejor racha, minutos semanales y días del mes pasan a funciones puras (sesiones, hoy) y se reutiliza la lógica de fechas de `heatmap.js`. Añadidos `README.md` y `.gitignore`.
+- Refactor: racha, mejor racha, minutos semanales y días del mes pasan a funciones puras (sesiones, hoy) y se reutiliza la lógica de fechas. Añadidos `README.md` y `.gitignore`.
+- `AGENTS.md` actualizado: archivos autorizados por spec, `node --test`, clave `studySessions` y sin la regla absoluta de tres archivos.
