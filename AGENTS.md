@@ -4,18 +4,20 @@ Web para registrar sesiones de estudio y ver la racha de días seguidos estudian
 
 ## Stack y estructura
 - HTML, CSS y JavaScript puros, sin frameworks ni dependencias.
-- Solo tres archivos: `index.html`, `styles.css`, `app.js`.
+- Tres archivos base: `index.html`, `styles.css`, `app.js`.
+- Archivos adicionales solo si la spec activa los autoriza (por ejemplo, `heatmap.js` y `heatmap.test.js`).
 - `index.html`: estructura y formulario (fecha, tema, minutos).
 - `styles.css`: estilos, diseño responsive (max-width 480px).
 - `app.js`: lógica, validación, racha, render y persistencia.
 
 ## Comandos
-- No hay build ni tests. Abrir `index.html` con doble clic en el navegador.
+- Tests de lógica: `node --test`.
+- Abrir `index.html` con doble clic en el navegador.
 
 ## Convenciones
 - Textos de interfaz en español.
 - Fechas en formato `YYYY-MM-DD` y siempre en zona horaria local (nunca UTC).
-- Sin añadir archivos, dependencias ni librerías.
+- Sin dependencias ni librerías. Archivos nuevos solo si la spec los autoriza.
 - Código simple y legible.
 
 ## Reglas de dominio / trampas conocidas
@@ -28,7 +30,7 @@ Web para registrar sesiones de estudio y ver la racha de días seguidos estudian
 ## Forma de trabajar
 - Haz solo lo que se te pide: no añadas funcionalidades por tu cuenta.
 - Cambios pequeños y directos. Explicar al terminar qué se hizo.
-- Al terminar, resume que has cambiado y cualquier desicion que deba revisar.
+- Al terminar, resume qué has cambiado y cualquier decisión que deba revisar.
 
 ## Memoria
 - Al empezar, lee `MEMORY.md` para conocer el estado del proyecto y las decisiones
@@ -40,20 +42,16 @@ tomadas.
   dejarlo en la memoria.
 - No guardes nunca datos sensibles (claves, tokens, datos personales).
 
-## Comandos
-- Tests: `node --test`
-
 ## Reglas
 - Lee `docs/constitution.md` y la spec activa (`specs/NNN-*/`) antes de tocar código.
 
 ## Límites
-- ✅ Siempre: modificar los tres archivos existentes, mantener el diseño responsive.
-- ✅ Siempre: actualizar 'MEMORY.MD' al terminar cada tarea
-- ⚠ Pregunta antes: crear archivos, cambiar el formato de los datos guardados.
-- 🚫 Nunca:  añadir dependencias, frameworks o paso de build.
+- ✅ Siempre: mantener los tres archivos base, el diseño responsive y `MEMORY.md` actualizado.
+- ✅ Siempre: mantener la lógica en funciones puras que reciben «hoy» y tienen tests con `node --test`.
+- ⚠ Pregunta antes: crear archivos no previstos por la spec o cambiar el formato de los datos guardados.
+- 🚫 Nunca: añadir dependencias, frameworks o paso de build; usar UTC para fechas.
 
 ## Verificación
-- No hay tests automáticos. Después de cada cambio, verifica con el MCP de Chrome
-DevTools: abre `index.html`, prueba la funcionalidad, revisa la consola y comprueba la
-vista móvil.
--Para empezar de cero: DevTools - Application - Local Storage - borrar clave 'diario-estudio-sesiones'.
+- Lógica: `node --test` en verde.
+- Interfaz: abre `index.html` con el MCP de Chrome DevTools, prueba la funcionalidad, revisa la consola y comprueba la vista móvil.
+- Para empezar de cero: DevTools → Application → Local Storage → borrar la clave `studySessions`.

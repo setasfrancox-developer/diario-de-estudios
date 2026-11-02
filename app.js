@@ -1,18 +1,44 @@
 const STORAGE_KEY = 'studySessions';
+const STORAGE_GOAL_KEY = 'studyWeeklyGoal';
+
+let sesionesIlegibles = false;
+let textoIlegible = null;
 
 function loadSessions() {
+  if (typeof localStorage === 'undefined') return [];
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw === null) return [];
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      sesionesIlegibles = true;
+      textoIlegible = raw;
+      return [];
+    }
+    return parsed;
   } catch (e) {
+    sesionesIlegibles = true;
+    textoIlegible = raw;
     return [];
   }
 }
 
 function saveSessions(sessions) {
+  if (sesionesIlegibles && textoIlegible !== null) {
+    try {
+      localStorage.setItem(STORAGE_KEY + '_backup_' + Date.now(), textoIlegible);
+      sesionesIlegibles = false;
+      textoIlegible = null;
+    } catch (e) {
+      return;
+    }
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
 }
 
-let sessions = loadSessions();
+let sessions = (typeof localStorage !== 'undefined') ? loadSessions() : [];
+let seleccionMapa = null;
+let mapaActual = null;
 
 function todayStr() {
   const d = new Date();
@@ -88,13 +114,273 @@ function computeBestStreak() {
   return best;
 }
 
+function renderMapa() {
+  const grid = document.getElementById('heatmap-grid');
+  const detail = document.getElementById('heatmap-detail');
+  const legend = document.getElementById('heatmap-legend');
+  if (!grid || !detail || !legend) return;
+
+  const hoy = todayStr();
+  mapaActual = Heatmap.construirMapa(sessions, hoy);
+  seleccionMapa = Heatmap.resolverSeleccion(seleccionMapa, mapaActual, hoy);
+
+  grid.innerHTML = '';
+  for (let fila = 0; fila < 7; fila++) {
+    for (let col = 0; col < 12; col++) {
+      const dia = mapaActual.semanas[col][fila];
+      const celda = document.createElement(dia.disponible ? 'button' : 'span');
+      celda.className = 'heatmap-cell ' +
+        (dia.disponible ? 'heatmap-cell--available nivel-' + dia.nivel : 'heatmap-cell--unavailable');
+      celda.dataset.fecha = dia.fecha;
+      celda.style.gridColumn = String(col + 1);
+      celda.style.gridRow = String(fila + 1);
+      celda.setAttribute('aria-colindex', String(col + 1));
+      celda.setAttribute('aria-rowindex', String(fila + 1));
+
+      if (dia.disponible) {
+        celda.type = 'button';
+        celda.setAttribute('aria-label', dia.fecha + ': ' + dia.minutos + ' minutos');
+        celda.tabIndex = dia.fecha === seleccionMapa ? 0 : -1;
+        if (dia.fecha === seleccionMapa) {
+          celda.classList.add('heatmap-cell--selected');
+        }
+      } else {
+        celda.tabIndex = -1;
+        celda.setAttribute('aria-disabled', 'true');
+      }
+
+      grid.appendChild(celda);
+    }
+  }
+
+  const diaSeleccionado = mapaActual.dias.find(function (d) { return d.fecha === seleccionMapa; });
+  const minutosSeleccionados = diaSeleccionado ? diaSeleccionado.minutos : 0;
+  detail.textContent = Heatmap.formatearDetalle(seleccionMapa, minutosSeleccionados);
+
+  legend.innerHTML = '';
+  const etiquetas = ['0 min', '1-30 min', '31-60 min', '61-120 min', 'más de 120 min'];
+  const menos = document.createElement('span');
+  menos.className = 'heatmap-legend__label';
+  menos.textContent = 'Menos';
+  legend.appendChild(menos);
+
+  for (let nivel = 0; nivel <= 4; nivel++) {
+    const muestra = document.createElement('span');
+    muestra.className = 'heatmap-legend__swatch nivel-' + nivel;
+    muestra.setAttribute('aria-label', etiquetas[nivel]);
+    legend.appendChild(muestra);
+  }
+
+  const mas = document.createElement('span');
+  mas.className = 'heatmap-legend__label';
+  mas.textContent = 'Más';
+  legend.appendChild(mas);
+}
+
+function computeWeekMinutes() {
+  const today = dateFromStr(todayStr());
+  const daysSinceMonday = (today.getDay() + 6) % 7;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - daysSinceMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  const start = strFromDate(monday);
+  const end = strFromDate(sunday);
+  let total = 0;
+
+  sessions.forEach(function (s) {
+    if (s.date >= start && s.date <= end) {
+      total += Number(s.minutes) || 0;
+    }
+  });
+
+  return total;
+}
+
+function computeMonthDays() {
+  const month = todayStr().slice(0, 7);
+  let total = 0;
+
+  studyDays().forEach(function (day) {
+    if (day.slice(0, 7) === month) {
+      total++;
+    }
+  });
+
+  return total;
+}
+
+function esFechaValida(texto) {
+  if (typeof texto !== 'string') return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
+  const partes = texto.split('-').map(Number);
+  const fecha = new Date(partes[0], partes[1] - 1, partes[2]);
+  return fecha.getFullYear() === partes[0] &&
+         fecha.getMonth() === partes[1] - 1 &&
+         fecha.getDate() === partes[2];
+}
+
+function esMinutoValido(valor) {
+  return Number.isInteger(valor) && Number.isFinite(valor) && valor > 0;
+}
+
+function obtenerLunesTexto(texto) {
+  const fecha = dateFromStr(texto);
+  const desplazamiento = (fecha.getDay() + 6) % 7;
+  fecha.setDate(fecha.getDate() - desplazamiento);
+  return strFromDate(fecha);
+}
+
+function sumarDiasTexto(texto, n) {
+  const fecha = dateFromStr(texto);
+  fecha.setDate(fecha.getDate() + n);
+  return strFromDate(fecha);
+}
+
+function validarObjetivo(texto) {
+  const s = String(texto == null ? '' : texto);
+  if (s === '1.0') return { valido: true, valor: 1 };
+  if (!/^[1-9][0-9]*$/.test(s)) return { valido: false, valor: null };
+  const n = Number(s);
+  if (!Number.isFinite(n) || n <= 0) return { valido: false, valor: null };
+  return { valido: true, valor: n };
+}
+
+function minutosDeLaSemana(sesiones, hoy) {
+  if (!esFechaValida(hoy)) return 0;
+  const lunes = obtenerLunesTexto(hoy);
+  const domingo = sumarDiasTexto(lunes, 6);
+  let total = 0;
+
+  if (!Array.isArray(sesiones)) return total;
+
+  for (let i = 0; i < sesiones.length; i++) {
+    const sesion = sesiones[i];
+    if (!sesion || typeof sesion !== 'object') continue;
+    if (!esFechaValida(sesion.date)) continue;
+    if (!esMinutoValido(sesion.minutes)) continue;
+    if (sesion.date > hoy) continue;
+    if (sesion.date < lunes || sesion.date > domingo) continue;
+    total += sesion.minutes;
+  }
+
+  return total;
+}
+
+function porcentajeProgreso(hechos, objetivo) {
+  if (!esMinutoValido(objetivo)) return 0;
+  const porcentaje = (hechos / objetivo) * 100;
+  return Math.min(100, Math.round(porcentaje));
+}
+
+function objetivoCumplido(hechos, objetivo) {
+  return esMinutoValido(objetivo) && hechos >= objetivo;
+}
+
+function esObjetivoIlegible(valor) {
+  if (valor === null || valor === undefined || valor === '') return false;
+  const n = Number(valor);
+  if (n === 0 && (valor === '0' || valor === 0)) return false;
+  return !Number.isFinite(n) || !Number.isInteger(n) || n <= 0;
+}
+
+function leerObjetivoGuardado(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  const n = Number(valor);
+  if (n === 0) return null;
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null;
+  return n;
+}
+
+function renderObjetivo() {
+  const objetivoRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(STORAGE_GOAL_KEY) : null;
+  const objetivo = leerObjetivoGuardado(objetivoRaw);
+  const hechos = minutosDeLaSemana(sessions, todayStr());
+
+  const invite = document.getElementById('goal-invite');
+  const progress = document.getElementById('goal-progress');
+  const text = document.getElementById('goal-text');
+  const bar = document.getElementById('goal-bar');
+  const fill = document.getElementById('goal-bar-fill');
+  const complete = document.getElementById('goal-complete');
+
+  if (objetivo === null) {
+    if (invite) invite.hidden = false;
+    if (progress) progress.hidden = true;
+    if (bar) bar.removeAttribute('aria-valuenow');
+    return;
+  }
+
+  if (invite) invite.hidden = true;
+  if (progress) progress.hidden = false;
+  if (text) text.textContent = hechos + ' / ' + objetivo + ' min';
+
+  const porcentaje = porcentajeProgreso(hechos, objetivo);
+  if (fill) fill.style.width = porcentaje + '%';
+  if (bar) bar.setAttribute('aria-valuenow', String(porcentaje));
+  if (complete) complete.hidden = !objetivoCumplido(hechos, objetivo);
+}
+
+function guardarObjetivo(texto) {
+  const resultado = validarObjetivo(texto);
+  const error = document.getElementById('goal-error');
+  const input = document.getElementById('goal-input');
+
+  if (!resultado.valido) {
+    if (error) error.textContent = 'Introduce un número entero mayor que 0.';
+    return;
+  }
+
+  if (typeof localStorage !== 'undefined') {
+    const raw = localStorage.getItem(STORAGE_GOAL_KEY);
+    if (raw !== null && raw !== '' && esObjetivoIlegible(raw)) {
+      try {
+        localStorage.setItem(STORAGE_GOAL_KEY + '_backup_' + Date.now(), raw);
+      } catch (e) {
+        if (error) error.textContent = 'No se pudo guardar el objetivo.';
+        return;
+      }
+    }
+    localStorage.setItem(STORAGE_GOAL_KEY, String(resultado.valor));
+  }
+
+  if (input) input.value = '';
+  if (error) error.textContent = '';
+  renderObjetivo();
+}
+
 function renderStreaks() {
   const current = computeStreak();
   const best = computeBestStreak();
   document.getElementById('streak').textContent = current;
-  document.getElementById('streak-word').textContent = current === 1 ? 'día seguido' : 'días seguidos';
+  document.getElementById('streak-label').textContent = current === 1 ? 'día seguido' : 'días seguidos';
   document.getElementById('best-streak').textContent = best;
-  document.getElementById('best-streak-word').textContent = best === 1 ? 'día' : 'días';
+  document.getElementById('week-minutes').textContent = computeWeekMinutes();
+  const monthDays = computeMonthDays();
+  document.getElementById('month-days').textContent = monthDays;
+}
+
+function seleccionarDiaHeatmap(fecha) {
+  if (!mapaActual) return;
+  const dia = mapaActual.dias.find(function (d) { return d.fecha === fecha && d.disponible; });
+  if (!dia) return;
+
+  const anterior = document.querySelector('.heatmap-cell--selected');
+  if (anterior) anterior.classList.remove('heatmap-cell--selected');
+
+  const nueva = document.querySelector('[data-fecha="' + fecha + '"].heatmap-cell--available');
+  if (nueva) {
+    nueva.classList.add('heatmap-cell--selected');
+    document.querySelectorAll('.heatmap-cell--available').forEach(function (c) { c.tabIndex = -1; });
+    nueva.tabIndex = 0;
+  }
+
+  seleccionMapa = fecha;
+  const detail = document.getElementById('heatmap-detail');
+  if (detail) {
+    detail.textContent = Heatmap.formatearDetalle(fecha, dia.minutos);
+  }
 }
 
 function renderSessions() {
@@ -136,9 +422,12 @@ function renderSessions() {
 
 function render() {
   renderStreaks();
+  renderMapa();
+  renderObjetivo();
   renderSessions();
 }
 
+if (typeof document !== 'undefined') {
 const form = document.getElementById('session-form');
 const dateInput = document.getElementById('date');
 const topicInput = document.getElementById('topic');
@@ -172,4 +461,102 @@ form.addEventListener('submit', function (e) {
   dateInput.max = todayStr();
 });
 
-render();
+const goalForm = document.getElementById('goal-form');
+const goalInput = document.getElementById('goal-input');
+if (goalForm) {
+  goalForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    guardarObjetivo(goalInput ? goalInput.value : '');
+  });
+}
+
+const heatmapGrid = document.getElementById('heatmap-grid');
+if (heatmapGrid) {
+  heatmapGrid.addEventListener('mouseover', function (e) {
+    const celda = e.target.closest('.heatmap-cell--available');
+    if (!celda || !mapaActual) return;
+    const dia = mapaActual.dias.find(function (d) { return d.fecha === celda.dataset.fecha; });
+    if (!dia) return;
+    const detail = document.getElementById('heatmap-detail');
+    if (detail) {
+      detail.textContent = Heatmap.formatearDetalle(celda.dataset.fecha, dia.minutos);
+    }
+  });
+
+  heatmapGrid.addEventListener('mouseleave', function () {
+    if (!mapaActual) return;
+    const detail = document.getElementById('heatmap-detail');
+    const dia = mapaActual.dias.find(function (d) { return d.fecha === seleccionMapa; });
+    if (detail && dia) {
+      detail.textContent = Heatmap.formatearDetalle(seleccionMapa, dia.minutos);
+    }
+  });
+
+  heatmapGrid.addEventListener('click', function (e) {
+    const celda = e.target.closest('.heatmap-cell--available');
+    if (celda) {
+      seleccionarDiaHeatmap(celda.dataset.fecha);
+    }
+  });
+
+  heatmapGrid.addEventListener('focusin', function (e) {
+    const celda = e.target.closest('.heatmap-cell--available');
+    if (celda) {
+      seleccionarDiaHeatmap(celda.dataset.fecha);
+    }
+  });
+
+  heatmapGrid.addEventListener('keydown', function (e) {
+    if (!mapaActual) return;
+    const activo = document.activeElement;
+    if (!activo || !activo.classList.contains('heatmap-cell--available')) return;
+
+    const fecha = activo.dataset.fecha;
+    const indice = mapaActual.dias.findIndex(function (d) { return d.fecha === fecha; });
+    if (indice < 0) return;
+
+    let objetivo = null;
+    if (e.key === 'ArrowRight') objetivo = indice + 7;
+    else if (e.key === 'ArrowLeft') objetivo = indice - 7;
+    else if (e.key === 'ArrowDown') objetivo = indice + 1;
+    else if (e.key === 'ArrowUp') objetivo = indice - 1;
+    else if (e.key === 'Home') {
+      objetivo = mapaActual.dias.findIndex(function (d) { return d.disponible; });
+    } else if (e.key === 'End') {
+      for (let i = mapaActual.dias.length - 1; i >= 0; i--) {
+        if (mapaActual.dias[i].disponible) { objetivo = i; break; }
+      }
+    } else {
+      return;
+    }
+
+    if (objetivo === null) return;
+    while (objetivo >= 0 && objetivo < mapaActual.dias.length && !mapaActual.dias[objetivo].disponible) {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'End') objetivo++;
+      else objetivo--;
+    }
+
+    if (objetivo < 0 || objetivo >= mapaActual.dias.length) return;
+    if (!mapaActual.dias[objetivo].disponible) return;
+
+    e.preventDefault();
+    const nuevaFecha = mapaActual.dias[objetivo].fecha;
+    const boton = heatmapGrid.querySelector('[data-fecha="' + nuevaFecha + '"]');
+    if (boton) boton.focus();
+  });
+}
+
+  render();
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    validarObjetivo: validarObjetivo,
+    minutosDeLaSemana: minutosDeLaSemana,
+    porcentajeProgreso: porcentajeProgreso,
+    objetivoCumplido: objetivoCumplido,
+    leerObjetivoGuardado: leerObjetivoGuardado,
+    esObjetivoIlegible: esObjetivoIlegible
+  };
+}
+

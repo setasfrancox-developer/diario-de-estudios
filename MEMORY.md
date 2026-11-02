@@ -15,15 +15,23 @@ aporte.
 - No se permiten fechas futuras (max en el input + guarda en el submit): una sesión futura inflaba la mejor racha sin contar en la actual.
 - Constitución aprobada en `docs/constitution.md` (6 principios): guía de lo innegociable del proyecto.
 - Spec 001 (mapa de calor): 12 semanas fijas (lunes a domingo), 5 niveles por tramos fijos de minutos (0, 1-30, 31-60, 61-120, >120), detalle al tocar un día, datos inválidos ignorados sin tocarlos. Fijo y no relativo: más simple de entender y de comprobar.
+- Revisión QA 2026-11-02: decisiones en la sección 10 de la spec 001. Convive con las estadísticas actuales, detalle bajo el mapa, teclado con flechas, tests `node --test` + navegador, funciones puras con «hoy», y copia de respaldo antes de sobrescribir datos ilegibles.
 - Etiqueta de racha en singular cuando vale 1 ("día seguido"), igual que la mejor racha.
 - Minutos semanales calculados al vuelo; semana de lunes a domingo en fecha local.
 - Días del mes calculados como días únicos del mes actual (incluye futuras), en fecha local.
 
 ## Aprendizajes y errores a evitar
-- Las skills se invocan con `@id` (p. ej. `@local-dates`), no con `/id`.
-- Skill propia del proyecto: `local-dates` en `.opencode/skills/`.
+- Las skills se invocan con `@id`, no con `/id`.
+- Las skills de Vercel instaladas y luego retiradas no aplican a esta web estática.
 
 ## Próximos pasos
-- `specs/001-heat-map/spec.md` aprobada (decisiones de la sección 9 aceptadas): lista para pasar al plan técnico e implementar.
-- Al implementar el mapa: actualizar `AGENTS.md` (regla de «solo tres archivos»).
-- Spec aparte pendiente: proteger datos ilegibles de `localStorage` para que no se sobrescriban al guardar.
+- `specs/001-heat-map/spec.md` aprobada y revisada por QA el 2026-11-02; decisiones en la sección 10.
+- `specs/001-heat-map/plan.md` creado: arquitectura, funciones puras, pseudocódigo, UI, tests y cobertura de RF.
+- `specs/001-heat-map/tasks.md` creado: 21 tareas pequeñas con dependencias y criterios verificables.
+- `AGENTS.md` actualizado: archivos autorizados por spec, `node --test`, clave `studySessions` y sin la regla absoluta de tres archivos.
+- La protección de datos ilegibles queda incluida en la spec 001 (copia de respaldo antes de escribir).
+- Implementación de la spec 001 completada: `heatmap.js`, `heatmap.test.js`, HTML, CSS y app.js.
+- Tests: `node --test heatmap.test.js` en verde (13 tests).
+- `AGENTS.md` actualizado: archivos autorizados por spec, `node --test`, clave `studySessions` y sin la regla absoluta de tres archivos.
+- Siguiente paso: revisión manual en el navegador y ajustes si hace falta.
+- `specs/002-objetivo-semanal` implementada y corregida tras revisión: objetivo semanal con validación, progreso, barra y respaldo. Tests: 17/17 en verde.

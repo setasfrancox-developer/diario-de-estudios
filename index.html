@@ -17,7 +17,6 @@
         <span class="streak-number" id="streak">0</span>
         <span class="streak-label" id="streak-label">días seguidos</span>
       </div>
-      <div class="week-chain" id="week-chain" aria-label="Últimos siete días"></div>
       <div class="stats">
         <div class="stat">
           <span class="stat__value" id="best-streak">0</span>
@@ -32,6 +31,31 @@
           <span class="stat__label">Días este mes</span>
         </div>
       </div>
+
+      <!-- Objetivo semanal de estudio -->
+      <div class="goal-block">
+        <p class="goal-invite" id="goal-invite">Fija un objetivo semanal para seguir tu progreso</p>
+        <div class="goal-progress" id="goal-progress" hidden>
+          <span class="goal-text" id="goal-text">0 / 0 min</span>
+          <div class="goal-bar" id="goal-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Progreso del objetivo semanal">
+            <div class="goal-bar__fill" id="goal-bar-fill"></div>
+          </div>
+          <span class="goal-complete" id="goal-complete" hidden>Objetivo cumplido</span>
+        </div>
+        <form id="goal-form" class="goal-form">
+          <input type="number" id="goal-input" min="1" step="1" placeholder="Minutos por semana">
+          <button type="submit">Guardar objetivo</button>
+        </form>
+        <p class="goal-error" id="goal-error" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- Mapa de calor de las últimas 12 semanas -->
+    <section class="card heatmap-card" aria-labelledby="heatmap-title">
+      <h2 id="heatmap-title">Últimas 12 semanas</h2>
+      <div class="heatmap-grid" id="heatmap-grid" role="grid" aria-rowcount="7" aria-colcount="12"></div>
+      <p class="heatmap-detail" id="heatmap-detail" aria-live="polite"></p>
+      <div class="heatmap-legend" id="heatmap-legend" aria-label="Leyenda de intensidad"></div>
     </section>
 
     <!-- Formulario para registrar una sesión de estudio -->
@@ -61,6 +85,7 @@
     </section>
   </main>
 
+  <script src="heatmap.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
