@@ -65,3 +65,43 @@ test('leerObjetivoGuardado y esObjetivoIlegible', function () {
   assert.equal(esObjetivoIlegible('0'), false);
   assert.equal(esObjetivoIlegible(null), false);
 });
+
+test('computeStreak calcula racha y tolera datos corruptos', function () {
+  const sesiones = [
+    { date: '2026-11-02', minutes: 30 },
+    { date: '2026-11-01', minutes: 20 },
+    { date: '2026-10-31', minutes: 10 },
+    null,
+    { date: '2026-10-29', minutes: 5 },
+    { date: 'invalida', minutes: 5 }
+  ];
+  assert.equal(computeStreak(sesiones, '2026-11-02'), 3);
+  assert.equal(computeStreak([], '2026-11-02'), 0);
+  assert.equal(computeStreak(null, '2026-11-02'), 0);
+  assert.equal(computeStreak(sesiones, '2026-11-03'), 0);
+});
+
+test('computeBestStreak calcula la mejor racha histórica', function () {
+  const sesiones = [
+    { date: '2026-10-30', minutes: 10 },
+    { date: '2026-10-31', minutes: 10 },
+    { date: '2026-11-01', minutes: 10 },
+    { date: '2026-11-02', minutes: 10 },
+    { date: '2026-11-05', minutes: 10 },
+    { date: '2026-11-06', minutes: 10 }
+  ];
+  assert.equal(computeBestStreak(sesiones, '2026-11-02'), 4);
+  assert.equal(computeBestStreak([], '2026-11-02'), 0);
+});
+
+test('computeMonthDays cuenta días únicos del mes', function () {
+  const sesiones = [
+    { date: '2026-11-02', minutes: 30 },
+    { date: '2026-11-02', minutes: 10 },
+    { date: '2026-11-01', minutes: 20 },
+    { date: '2026-10-31', minutes: 5 },
+    null
+  ];
+  assert.equal(computeMonthDays(sesiones, '2026-11-02'), 2);
+  assert.equal(computeMonthDays([], '2026-11-02'), 0);
+});

@@ -1,6 +1,10 @@
 const STORAGE_KEY = 'studySessions';
 const STORAGE_GOAL_KEY = 'studyWeeklyGoal';
 
+const Heatmap = (typeof require === 'function')
+  ? require('./heatmap.js')
+  : (typeof globalThis !== 'undefined' ? globalThis.Heatmap : {});
+
 let sesionesIlegibles = false;
 let textoIlegible = null;
 
@@ -24,6 +28,7 @@ function loadSessions() {
 }
 
 function saveSessions(sessions) {
+  if (typeof localStorage === 'undefined') return;
   if (sesionesIlegibles && textoIlegible !== null) {
     try {
       localStorage.setItem(STORAGE_KEY + '_backup_' + Date.now(), textoIlegible);
@@ -33,7 +38,11 @@ function saveSessions(sessions) {
       return;
     }
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  } catch (e) {
+    return;
+  }
 }
 
 let sessions = (typeof localStorage !== 'undefined') ? loadSessions() : [];
@@ -48,35 +57,47 @@ function todayStr() {
   return y + '-' + m + '-' + day;
 }
 
-function strFromDate(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return y + '-' + m + '-' + day;
+function esFechaValida(texto) {
+  return Heatmap.esFechaValida(texto);
 }
 
-function dateFromStr(str) {
-  const parts = str.split('-');
-  return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+function esMinutoValido(valor) {
+  return Heatmap.esMinutoValido(valor);
 }
 
-function studyDays() {
-  const set = new Set();
-  sessions.forEach(function (s) { set.add(s.date); });
-  return set;
+function fechaDesdeTexto(texto) {
+  return Heatmap.fechaDesdeTexto(texto);
 }
 
-function computeStreak() {
-  const days = studyDays();
-  const today = todayStr();
+function textoDesdeFecha(fecha) {
+  return Heatmap.textoDesdeFecha(fecha);
+}
+
+function diasValidos(sesiones) {
+  const conjunto = new Set();
+  if (!Array.isArray(sesiones)) return conjunto;
+  for (let i = 0; i < sesiones.length; i++) {
+    const sesion = sesiones[i];
+    if (!sesion || typeof sesion !== 'object') continue;
+    if (Heatmap.esFechaValida(sesion.date)) {
+      conjunto.add(sesion.date);
+    }
+  }
+  return conjunto;
+}
+
+function computeStreak(sesiones, hoy) {
+  const days = diasValidos(sesiones);
+  const today = (hoy === undefined) ? todayStr() : hoy;
+  if (!Heatmap.esFechaValida(today)) return 0;
 
   let cursor = null;
   if (days.has(today)) {
     cursor = today;
   } else {
-    const yd = dateFromStr(today);
+    const yd = Heatmap.fechaDesdeTexto(today);
     yd.setDate(yd.getDate() - 1);
-    const ys = strFromDate(yd);
+    const ys = Heatmap.textoDesdeFecha(yd);
     if (days.has(ys)) {
       cursor = ys;
     } else {
@@ -88,23 +109,23 @@ function computeStreak() {
   let cur = cursor;
   while (days.has(cur)) {
     count++;
-    const d = dateFromStr(cur);
+    const d = Heatmap.fechaDesdeTexto(cur);
     d.setDate(d.getDate() - 1);
-    cur = strFromDate(d);
+    cur = Heatmap.textoDesdeFecha(d);
   }
   return count;
 }
 
-function computeBestStreak() {
-  const days = Array.from(studyDays()).sort();
+function computeBestStreak(sesiones, hoy) {
+  const days = Array.from(diasValidos(sesiones)).sort();
   if (days.length === 0) return 0;
 
   let best = 1;
   let current = 1;
   for (let i = 1; i < days.length; i++) {
-    const prev = dateFromStr(days[i - 1]);
+    const prev = Heatmap.fechaDesdeTexto(days[i - 1]);
     prev.setDate(prev.getDate() + 1);
-    if (strFromDate(prev) === days[i]) {
+    if (Heatmap.textoDesdeFecha(prev) === days[i]) {
       current++;
       if (current > best) best = current;
     } else {
@@ -112,6 +133,65 @@ function computeBestStreak() {
     }
   }
   return best;
+}
+
+function minutosDeLaSemana(sesiones, hoy) {
+  if (!Heatmap.esFechaValida(hoy)) return 0;
+  const lunes = Heatmap.obtenerLunes(hoy);
+  const domingo = Heatmap.sumarDias(lunes, 6);
+  let total = 0;
+
+  if (!Array.isArray(sesiones)) return total;
+
+  for (let i = 0; i < sesiones.length; i++) {
+    const sesion = sesiones[i];
+    if (!sesion || typeof sesion !== 'object') continue;
+    if (!Heatmap.esFechaValida(sesion.date)) continue;
+    if (!Heatmap.esMinutoValido(sesion.minutes)) continue;
+    if (sesion.date > hoy) continue;
+    if (sesion.date < lunes || sesion.date > domingo) continue;
+    total += sesion.minutes;
+  }
+
+  return total;
+}
+
+function computeMonthDays(sesiones, hoy) {
+  if (!Heatmap.esFechaValida(hoy)) return 0;
+  const month = hoy.slice(0, 7);
+  let total = 0;
+
+  diasValidos(sesiones).forEach(function (day) {
+    if (day.slice(0, 7) === month) {
+      total++;
+    }
+  });
+
+  return total;
+}
+
+function validarObjetivo(texto) {
+  const s = String(texto == null ? '' : texto);
+  if (s === '1.0') return { valido: true, valor: 1 };
+  if (!/^[1-9][0-9]*$/.test(s)) return { valido: false, valor: null };
+  const n = Number(s);
+  if (!Number.isFinite(n) || n <= 0) return { valido: false, valor: null };
+  return { valido: true, valor: n };
+}
+
+function esObjetivoIlegible(valor) {
+  if (valor === null || valor === undefined || valor === '') return false;
+  const n = Number(valor);
+  if (n === 0 && (valor === '0' || valor === 0)) return false;
+  return !Number.isFinite(n) || !Number.isInteger(n) || n <= 0;
+}
+
+function leerObjetivoGuardado(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  const n = Number(valor);
+  if (n === 0) return null;
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null;
+  return n;
 }
 
 function renderMapa() {
@@ -126,6 +206,9 @@ function renderMapa() {
 
   grid.innerHTML = '';
   for (let fila = 0; fila < 7; fila++) {
+    const filaEl = document.createElement('div');
+    filaEl.className = 'heatmap-row';
+    filaEl.setAttribute('role', 'row');
     for (let col = 0; col < 12; col++) {
       const dia = mapaActual.semanas[col][fila];
       const celda = document.createElement(dia.disponible ? 'button' : 'span');
@@ -136,6 +219,7 @@ function renderMapa() {
       celda.style.gridRow = String(fila + 1);
       celda.setAttribute('aria-colindex', String(col + 1));
       celda.setAttribute('aria-rowindex', String(fila + 1));
+      celda.setAttribute('role', 'gridcell');
 
       if (dia.disponible) {
         celda.type = 'button';
@@ -149,8 +233,9 @@ function renderMapa() {
         celda.setAttribute('aria-disabled', 'true');
       }
 
-      grid.appendChild(celda);
+      filaEl.appendChild(celda);
     }
+    grid.appendChild(filaEl);
   }
 
   const diaSeleccionado = mapaActual.dias.find(function (d) { return d.fecha === seleccionMapa; });
@@ -177,120 +262,26 @@ function renderMapa() {
   legend.appendChild(mas);
 }
 
-function computeWeekMinutes() {
-  const today = dateFromStr(todayStr());
-  const daysSinceMonday = (today.getDay() + 6) % 7;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - daysSinceMonday);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
+function seleccionarDiaHeatmap(fecha) {
+  if (!mapaActual) return;
+  const dia = mapaActual.dias.find(function (d) { return d.fecha === fecha && d.disponible; });
+  if (!dia) return;
 
-  const start = strFromDate(monday);
-  const end = strFromDate(sunday);
-  let total = 0;
+  const anterior = document.querySelector('.heatmap-cell--selected');
+  if (anterior) anterior.classList.remove('heatmap-cell--selected');
 
-  sessions.forEach(function (s) {
-    if (s.date >= start && s.date <= end) {
-      total += Number(s.minutes) || 0;
-    }
-  });
-
-  return total;
-}
-
-function computeMonthDays() {
-  const month = todayStr().slice(0, 7);
-  let total = 0;
-
-  studyDays().forEach(function (day) {
-    if (day.slice(0, 7) === month) {
-      total++;
-    }
-  });
-
-  return total;
-}
-
-function esFechaValida(texto) {
-  if (typeof texto !== 'string') return false;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
-  const partes = texto.split('-').map(Number);
-  const fecha = new Date(partes[0], partes[1] - 1, partes[2]);
-  return fecha.getFullYear() === partes[0] &&
-         fecha.getMonth() === partes[1] - 1 &&
-         fecha.getDate() === partes[2];
-}
-
-function esMinutoValido(valor) {
-  return Number.isInteger(valor) && Number.isFinite(valor) && valor > 0;
-}
-
-function obtenerLunesTexto(texto) {
-  const fecha = dateFromStr(texto);
-  const desplazamiento = (fecha.getDay() + 6) % 7;
-  fecha.setDate(fecha.getDate() - desplazamiento);
-  return strFromDate(fecha);
-}
-
-function sumarDiasTexto(texto, n) {
-  const fecha = dateFromStr(texto);
-  fecha.setDate(fecha.getDate() + n);
-  return strFromDate(fecha);
-}
-
-function validarObjetivo(texto) {
-  const s = String(texto == null ? '' : texto);
-  if (s === '1.0') return { valido: true, valor: 1 };
-  if (!/^[1-9][0-9]*$/.test(s)) return { valido: false, valor: null };
-  const n = Number(s);
-  if (!Number.isFinite(n) || n <= 0) return { valido: false, valor: null };
-  return { valido: true, valor: n };
-}
-
-function minutosDeLaSemana(sesiones, hoy) {
-  if (!esFechaValida(hoy)) return 0;
-  const lunes = obtenerLunesTexto(hoy);
-  const domingo = sumarDiasTexto(lunes, 6);
-  let total = 0;
-
-  if (!Array.isArray(sesiones)) return total;
-
-  for (let i = 0; i < sesiones.length; i++) {
-    const sesion = sesiones[i];
-    if (!sesion || typeof sesion !== 'object') continue;
-    if (!esFechaValida(sesion.date)) continue;
-    if (!esMinutoValido(sesion.minutes)) continue;
-    if (sesion.date > hoy) continue;
-    if (sesion.date < lunes || sesion.date > domingo) continue;
-    total += sesion.minutes;
+  const nueva = document.querySelector('[data-fecha="' + fecha + '"].heatmap-cell--available');
+  if (nueva) {
+    nueva.classList.add('heatmap-cell--selected');
+    document.querySelectorAll('.heatmap-cell--available').forEach(function (c) { c.tabIndex = -1; });
+    nueva.tabIndex = 0;
   }
 
-  return total;
-}
-
-function porcentajeProgreso(hechos, objetivo) {
-  if (!esMinutoValido(objetivo)) return 0;
-  const porcentaje = (hechos / objetivo) * 100;
-  return Math.min(100, Math.round(porcentaje));
-}
-
-function objetivoCumplido(hechos, objetivo) {
-  return esMinutoValido(objetivo) && hechos >= objetivo;
-}
-
-function esObjetivoIlegible(valor) {
-  if (valor === null || valor === undefined || valor === '') return false;
-  const n = Number(valor);
-  if (n === 0 && (valor === '0' || valor === 0)) return false;
-  return !Number.isFinite(n) || !Number.isInteger(n) || n <= 0;
-}
-
-function leerObjetivoGuardado(valor) {
-  if (valor === null || valor === undefined || valor === '') return null;
-  const n = Number(valor);
-  if (n === 0) return null;
-  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null;
-  return n;
+  seleccionMapa = fecha;
+  const detail = document.getElementById('heatmap-detail');
+  if (detail) {
+    detail.textContent = Heatmap.formatearDetalle(fecha, dia.minutos);
+  }
 }
 
 function renderObjetivo() {
@@ -342,7 +333,12 @@ function guardarObjetivo(texto) {
         return;
       }
     }
-    localStorage.setItem(STORAGE_GOAL_KEY, String(resultado.valor));
+    try {
+      localStorage.setItem(STORAGE_GOAL_KEY, String(resultado.valor));
+    } catch (e) {
+      if (error) error.textContent = 'No se pudo guardar el objetivo.';
+      return;
+    }
   }
 
   if (input) input.value = '';
@@ -351,36 +347,14 @@ function guardarObjetivo(texto) {
 }
 
 function renderStreaks() {
-  const current = computeStreak();
-  const best = computeBestStreak();
+  const current = computeStreak(sessions, todayStr());
+  const best = computeBestStreak(sessions, todayStr());
   document.getElementById('streak').textContent = current;
   document.getElementById('streak-label').textContent = current === 1 ? 'día seguido' : 'días seguidos';
   document.getElementById('best-streak').textContent = best;
-  document.getElementById('week-minutes').textContent = computeWeekMinutes();
-  const monthDays = computeMonthDays();
+  document.getElementById('week-minutes').textContent = minutosDeLaSemana(sessions, todayStr());
+  const monthDays = computeMonthDays(sessions, todayStr());
   document.getElementById('month-days').textContent = monthDays;
-}
-
-function seleccionarDiaHeatmap(fecha) {
-  if (!mapaActual) return;
-  const dia = mapaActual.dias.find(function (d) { return d.fecha === fecha && d.disponible; });
-  if (!dia) return;
-
-  const anterior = document.querySelector('.heatmap-cell--selected');
-  if (anterior) anterior.classList.remove('heatmap-cell--selected');
-
-  const nueva = document.querySelector('[data-fecha="' + fecha + '"].heatmap-cell--available');
-  if (nueva) {
-    nueva.classList.add('heatmap-cell--selected');
-    document.querySelectorAll('.heatmap-cell--available').forEach(function (c) { c.tabIndex = -1; });
-    nueva.tabIndex = 0;
-  }
-
-  seleccionMapa = fecha;
-  const detail = document.getElementById('heatmap-detail');
-  if (detail) {
-    detail.textContent = Heatmap.formatearDetalle(fecha, dia.minutos);
-  }
 }
 
 function renderSessions() {
@@ -428,123 +402,125 @@ function render() {
 }
 
 if (typeof document !== 'undefined') {
-const form = document.getElementById('session-form');
-const dateInput = document.getElementById('date');
-const topicInput = document.getElementById('topic');
-const minutesInput = document.getElementById('minutes');
+  const form = document.getElementById('session-form');
+  const dateInput = document.getElementById('date');
+  const topicInput = document.getElementById('topic');
+  const minutesInput = document.getElementById('minutes');
 
-dateInput.value = todayStr();
-dateInput.max = todayStr();
-
-form.addEventListener('submit', function (e) {
-  e.preventDefault();
-  const date = dateInput.value;
-  const topic = topicInput.value.trim();
-  const minutes = Number(minutesInput.value);
-
-  if (!date || !topic || !(minutes > 0) || date > todayStr()) {
-    return;
-  }
-
-  sessions.push({
-    id: Date.now(),
-    date: date,
-    topic: topic,
-    minutes: minutes
-  });
-  saveSessions(sessions);
-  render();
-
-  topicInput.value = '';
-  minutesInput.value = '';
   dateInput.value = todayStr();
   dateInput.max = todayStr();
-});
 
-const goalForm = document.getElementById('goal-form');
-const goalInput = document.getElementById('goal-input');
-if (goalForm) {
-  goalForm.addEventListener('submit', function (e) {
+  form.addEventListener('submit', function (e) {
     e.preventDefault();
-    guardarObjetivo(goalInput ? goalInput.value : '');
-  });
-}
+    const date = dateInput.value;
+    const topic = topicInput.value.trim();
+    const minutes = Number(minutesInput.value);
 
-const heatmapGrid = document.getElementById('heatmap-grid');
-if (heatmapGrid) {
-  heatmapGrid.addEventListener('mouseover', function (e) {
-    const celda = e.target.closest('.heatmap-cell--available');
-    if (!celda || !mapaActual) return;
-    const dia = mapaActual.dias.find(function (d) { return d.fecha === celda.dataset.fecha; });
-    if (!dia) return;
-    const detail = document.getElementById('heatmap-detail');
-    if (detail) {
-      detail.textContent = Heatmap.formatearDetalle(celda.dataset.fecha, dia.minutos);
-    }
-  });
-
-  heatmapGrid.addEventListener('mouseleave', function () {
-    if (!mapaActual) return;
-    const detail = document.getElementById('heatmap-detail');
-    const dia = mapaActual.dias.find(function (d) { return d.fecha === seleccionMapa; });
-    if (detail && dia) {
-      detail.textContent = Heatmap.formatearDetalle(seleccionMapa, dia.minutos);
-    }
-  });
-
-  heatmapGrid.addEventListener('click', function (e) {
-    const celda = e.target.closest('.heatmap-cell--available');
-    if (celda) {
-      seleccionarDiaHeatmap(celda.dataset.fecha);
-    }
-  });
-
-  heatmapGrid.addEventListener('focusin', function (e) {
-    const celda = e.target.closest('.heatmap-cell--available');
-    if (celda) {
-      seleccionarDiaHeatmap(celda.dataset.fecha);
-    }
-  });
-
-  heatmapGrid.addEventListener('keydown', function (e) {
-    if (!mapaActual) return;
-    const activo = document.activeElement;
-    if (!activo || !activo.classList.contains('heatmap-cell--available')) return;
-
-    const fecha = activo.dataset.fecha;
-    const indice = mapaActual.dias.findIndex(function (d) { return d.fecha === fecha; });
-    if (indice < 0) return;
-
-    let objetivo = null;
-    if (e.key === 'ArrowRight') objetivo = indice + 7;
-    else if (e.key === 'ArrowLeft') objetivo = indice - 7;
-    else if (e.key === 'ArrowDown') objetivo = indice + 1;
-    else if (e.key === 'ArrowUp') objetivo = indice - 1;
-    else if (e.key === 'Home') {
-      objetivo = mapaActual.dias.findIndex(function (d) { return d.disponible; });
-    } else if (e.key === 'End') {
-      for (let i = mapaActual.dias.length - 1; i >= 0; i--) {
-        if (mapaActual.dias[i].disponible) { objetivo = i; break; }
-      }
-    } else {
+    if (!date || !topic || !(minutes > 0) || date > todayStr()) {
       return;
     }
 
-    if (objetivo === null) return;
-    while (objetivo >= 0 && objetivo < mapaActual.dias.length && !mapaActual.dias[objetivo].disponible) {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'End') objetivo++;
-      else objetivo--;
-    }
+    // Releer antes de guardar para no perder sesiones de otra pestaña.
+    sessions = (typeof localStorage !== 'undefined') ? loadSessions() : sessions;
+    sessions.push({
+      id: Date.now(),
+      date: date,
+      topic: topic,
+      minutes: minutes
+    });
+    saveSessions(sessions);
+    render();
 
-    if (objetivo < 0 || objetivo >= mapaActual.dias.length) return;
-    if (!mapaActual.dias[objetivo].disponible) return;
-
-    e.preventDefault();
-    const nuevaFecha = mapaActual.dias[objetivo].fecha;
-    const boton = heatmapGrid.querySelector('[data-fecha="' + nuevaFecha + '"]');
-    if (boton) boton.focus();
+    topicInput.value = '';
+    minutesInput.value = '';
+    dateInput.value = todayStr();
+    dateInput.max = todayStr();
   });
-}
+
+  const goalForm = document.getElementById('goal-form');
+  const goalInput = document.getElementById('goal-input');
+  if (goalForm) {
+    goalForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      guardarObjetivo(goalInput ? goalInput.value : '');
+    });
+  }
+
+  const heatmapGrid = document.getElementById('heatmap-grid');
+  if (heatmapGrid) {
+    heatmapGrid.addEventListener('mouseover', function (e) {
+      const celda = e.target.closest('.heatmap-cell--available');
+      if (!celda || !mapaActual) return;
+      const dia = mapaActual.dias.find(function (d) { return d.fecha === celda.dataset.fecha; });
+      if (!dia) return;
+      const detail = document.getElementById('heatmap-detail');
+      if (detail) {
+        detail.textContent = Heatmap.formatearDetalle(celda.dataset.fecha, dia.minutos);
+      }
+    });
+
+    heatmapGrid.addEventListener('mouseleave', function () {
+      if (!mapaActual) return;
+      const detail = document.getElementById('heatmap-detail');
+      const dia = mapaActual.dias.find(function (d) { return d.fecha === seleccionMapa; });
+      if (detail && dia) {
+        detail.textContent = Heatmap.formatearDetalle(seleccionMapa, dia.minutos);
+      }
+    });
+
+    heatmapGrid.addEventListener('click', function (e) {
+      const celda = e.target.closest('.heatmap-cell--available');
+      if (celda) {
+        seleccionarDiaHeatmap(celda.dataset.fecha);
+      }
+    });
+
+    heatmapGrid.addEventListener('focusin', function (e) {
+      const celda = e.target.closest('.heatmap-cell--available');
+      if (celda) {
+        seleccionarDiaHeatmap(celda.dataset.fecha);
+      }
+    });
+
+    heatmapGrid.addEventListener('keydown', function (e) {
+      if (!mapaActual) return;
+      const activo = document.activeElement;
+      if (!activo || !activo.classList.contains('heatmap-cell--available')) return;
+
+      const fecha = activo.dataset.fecha;
+      const indice = mapaActual.dias.findIndex(function (d) { return d.fecha === fecha; });
+      if (indice < 0) return;
+
+      let objetivo = null;
+      if (e.key === 'ArrowRight') objetivo = indice + 7;
+      else if (e.key === 'ArrowLeft') objetivo = indice - 7;
+      else if (e.key === 'ArrowDown') objetivo = indice + 1;
+      else if (e.key === 'ArrowUp') objetivo = indice - 1;
+      else if (e.key === 'Home') {
+        objetivo = mapaActual.dias.findIndex(function (d) { return d.disponible; });
+      } else if (e.key === 'End') {
+        for (let i = mapaActual.dias.length - 1; i >= 0; i--) {
+          if (mapaActual.dias[i].disponible) { objetivo = i; break; }
+        }
+      } else {
+        return;
+      }
+
+      if (objetivo === null) return;
+      while (objetivo >= 0 && objetivo < mapaActual.dias.length && !mapaActual.dias[objetivo].disponible) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'End') objetivo++;
+        else objetivo--;
+      }
+
+      if (objetivo < 0 || objetivo >= mapaActual.dias.length) return;
+      if (!mapaActual.dias[objetivo].disponible) return;
+
+      e.preventDefault();
+      const nuevaFecha = mapaActual.dias[objetivo].fecha;
+      const boton = heatmapGrid.querySelector('[data-fecha="' + nuevaFecha + '"]');
+      if (boton) boton.focus();
+    });
+  }
 
   render();
 }
@@ -556,7 +532,9 @@ if (typeof module !== 'undefined' && module.exports) {
     porcentajeProgreso: porcentajeProgreso,
     objetivoCumplido: objetivoCumplido,
     leerObjetivoGuardado: leerObjetivoGuardado,
-    esObjetivoIlegible: esObjetivoIlegible
+    esObjetivoIlegible: esObjetivoIlegible,
+    computeStreak: computeStreak,
+    computeBestStreak: computeBestStreak,
+    computeMonthDays: computeMonthDays
   };
 }
-

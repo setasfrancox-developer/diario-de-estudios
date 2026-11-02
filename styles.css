@@ -398,3 +398,8 @@ input:focus-visible {
   font-size: 0.85rem;
   min-height: 1.2em;
 }
+
+/* Filas del mapa de calor (solo para semántica ARIA; no cambian el layout) */
+.heatmap-row {
+  display: contents;
+}

@@ -4,8 +4,8 @@ Web para registrar sesiones de estudio y ver la racha de días seguidos estudian
 
 ## Stack y estructura
 - HTML, CSS y JavaScript puros, sin frameworks ni dependencias.
-- Tres archivos base: `index.html`, `styles.css`, `app.js`.
-- Archivos adicionales solo si la spec activa los autoriza (por ejemplo, `heatmap.js` y `heatmap.test.js`).
+- Archivos base: `index.html`, `styles.css`, `app.js`.
+- Archivos adicionales solo si la spec activa los autoriza (por ejemplo, `heatmap.js`, `heatmap.test.js`, `app.test.js`).
 - `index.html`: estructura y formulario (fecha, tema, minutos).
 - `styles.css`: estilos, diseño responsive (max-width 480px).
 - `app.js`: lógica, validación, racha, render y persistencia.
@@ -46,7 +46,7 @@ tomadas.
 - Lee `docs/constitution.md` y la spec activa (`specs/NNN-*/`) antes de tocar código.
 
 ## Límites
-- ✅ Siempre: mantener los tres archivos base, el diseño responsive y `MEMORY.md` actualizado.
+- ✅ Siempre: mantener los archivos base, el diseño responsive y `MEMORY.md` actualizado.
 - ✅ Siempre: mantener la lógica en funciones puras que reciben «hoy» y tienen tests con `node --test`.
 - ⚠ Pregunta antes: crear archivos no previstos por la spec o cambiar el formato de los datos guardados.
 - 🚫 Nunca: añadir dependencias, frameworks o paso de build; usar UTC para fechas.
